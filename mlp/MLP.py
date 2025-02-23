@@ -1,7 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import DataLoader
+from torchvision import datasets, transforms
 
 # Model
 class MLP(nn.Module):
@@ -17,48 +18,39 @@ class MLP(nn.Module):
         out = self.fc2(out)
         return out
 
-# Custom dataset
-class MyDataset(Dataset):
-    def __init__(self, X, y):
-        self.X = X
-        self.y = y
-    def __len__(self):
-        return len(self.X)
-    def __getitem__(self, idx):
-        return self.X[idx], self.y[idx]
-
 if __name__ == '__main__':
     
-    # Load your data (replace with your actual data loading)
-    X_train = torch.randn(100, 10) 
-    y_train = torch.randint(0, 2, (100,))
-
-    # Create the dataset
-    train_dataset = MyDataset(X_train, y_train)
-
-    # Create the dataloader
+    # Load the MNIST dataset
+    transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,))])
+    train_dataset = datasets.MNIST(root='./data', train=True, transform=transform, download=False)
     train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
 
     # Create the model
-    model = MLP(input_size=10, hidden_size=5, output_size=2)
+    input_size = 28 * 28  # MNIST images are 28x28 pixels
+    hidden_size = 128
+    output_size = 10  # MNIST has 10 classes (digits 0-9)
+    model = MLP(input_size, hidden_size, output_size)
 
-    # Define the loss function
+    # Define the loss function and optimizer
     criterion = nn.CrossEntropyLoss()
-
-    # Define the optimizer
     optimizer = optim.Adam(model.parameters())
 
     # Train the model
-    num_epochs = 10
+    num_epochs = 2
     for epoch in range(num_epochs):
         for batch_idx, (data, target) in enumerate(train_loader):
+            # Flatten the input data
+            data = data.view(-1, 28 * 28)
+            
             # Forward pass
             output = model(data)
             loss = criterion(output, target)
+            
             # Backward pass and optimization
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+            
             # Print progress
-            if batch_idx % 10 == 0:
+            if batch_idx % 100 == 0:
                 print(f'Train Epoch: {epoch} [{batch_idx * len(data)}/{len(train_loader.dataset)} ({100. * batch_idx / len(train_loader):.0f}%)]\tLoss: {loss.item():.6f}')
