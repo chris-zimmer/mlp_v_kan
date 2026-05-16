@@ -6,10 +6,11 @@ A comparison of **Multi-Layer Perceptrons (MLPs)** and **Kolmogorov-Arnold Netwo
 
 ```
 src/
-  main.py              # Entry point (MPS/GPU availability check)
+  main.py              # Entry point: trains MLP and KAN on MNIST, prints per-model results
+  data/                # MNIST data (gitignored)
   models/
-    mlp.py             # MLP model with MNIST training loop
-    kan.py             # KAN model stub (pykan)
+    mlp.py             # MLP model definition
+    kan.py             # KAN builder (pykan)
 notebooks/
   kan_ex.ipynb         # KAN experimentation notebook
 ```
@@ -35,13 +36,17 @@ PyTorch is installed platform-specifically:
 
 ## Usage
 
-Train the MLP on MNIST:
+Train and evaluate both models on MNIST:
 
 ```bash
-python src/models/mlp.py
+python src/main.py
 ```
 
-MNIST data is expected in `./data/`. The training script does not download it automatically (`download=False`).
+This prints parameter counts, training time, and test accuracy for the MLP and KAN in sequence. The MLP uses the best available device (CUDA → MPS → CPU); the KAN runs on CPU.
+
+MNIST data is expected in `src/data/`. The script does not download it automatically (`download=False`).
+
+Tune the KAN's training cost via the constants at the top of `src/main.py` (`KAN_INPUT_SIZE`, `KAN_TRAIN_SAMPLES`, `KAN_TEST_SAMPLES`) and the `steps` argument to `run_kan`.
 
 ## Development
 
