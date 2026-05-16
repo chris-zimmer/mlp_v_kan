@@ -16,8 +16,10 @@ notebooks/
 
 ## Current Status
 
-- **MLP**: Working end-to-end on MNIST (2-layer, 128 hidden units, ReLU, trained with Adam).
-- **KAN**: Skeletal — model instantiated via [pykan](https://github.com/KindXiaoming/pykan) but not yet connected to a dataset or training loop.
+Both models train end-to-end on MNIST via `python src/main.py`, which loads each model from `src/models/` and prints per-model parameter counts, training time, and test accuracy.
+
+- **MLP**: 2-layer (128 hidden, ReLU), trained with Adam + cross-entropy on full 28×28 MNIST. ~97% test accuracy after 1 epoch.
+- **KAN**: `width=[64, 10, 10]` (grid=5, k=3) via [pykan](https://github.com/KindXiaoming/pykan), trained with LBFGS + cross-entropy on 8×8 downsampled MNIST (1000 train / 1000 test). ~81% test accuracy after 20 steps. Pinned to CPU because pykan's grid ops aren't reliably MPS-compatible.
 
 ## Setup
 
