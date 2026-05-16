@@ -1,3 +1,5 @@
 src/data/
+src/model/
 notebooks/figures
 notebooks/model
+model/

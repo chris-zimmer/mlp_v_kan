@@ -1,3 +1,11 @@
 from kan import KAN
 
-model = KAN(width=[2,5,1], grid=5, k=3)
+
+def build_kan(
+    input_size: int,
+    hidden_size: int = 10,
+    output_size: int = 10,
+    grid: int = 5,
+    k: int = 3,
+) -> KAN:
+    return KAN(width=[input_size, hidden_size, output_size], grid=grid, k=k)
