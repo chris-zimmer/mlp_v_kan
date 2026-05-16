@@ -19,6 +19,7 @@ KAN_TEST_SAMPLES = 1000
 
 
 def pick_device() -> torch.device:
+    """Return the best available torch device, preferring CUDA, then MPS, then CPU."""
     if torch.cuda.is_available():
         return torch.device("cuda")
     if torch.backends.mps.is_available():
@@ -27,6 +28,7 @@ def pick_device() -> torch.device:
 
 
 def mnist_loaders(batch_size: int) -> tuple[DataLoader, DataLoader]:
+    """Build normalized MNIST train and test DataLoaders at full 28x28 resolution."""
     transform = transforms.Compose(
         [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
     )
@@ -45,6 +47,7 @@ def mnist_loaders(batch_size: int) -> tuple[DataLoader, DataLoader]:
 def mnist_tensors(
     n_train: int, n_test: int, image_size: int
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Load MNIST as flat (train_x, train_y, test_x, test_y) tensors, resized to image_size and limited to n_train/n_test samples."""
     transform = transforms.Compose(
         [
             transforms.Resize((image_size, image_size)),
@@ -76,6 +79,7 @@ def mnist_tensors(
 
 
 def evaluate(model: nn.Module, loader: DataLoader, device: torch.device) -> float:
+    """Compute classification accuracy of model over loader on the given device."""
     model.eval()
     correct = 0
     total = 0
@@ -90,6 +94,7 @@ def evaluate(model: nn.Module, loader: DataLoader, device: torch.device) -> floa
 
 
 def run_mlp(device: torch.device, epochs: int = 1) -> None:
+    """Train the MLP on full MNIST with Adam + cross-entropy and print params, train time, and test accuracy."""
     print("\n=== MLP ===")
     train_loader, test_loader = mnist_loaders(batch_size=64)
     model = MLP(INPUT_SIZE, 128, NUM_CLASSES).to(device)
@@ -120,6 +125,7 @@ def run_mlp(device: torch.device, epochs: int = 1) -> None:
 
 
 def run_kan(device: torch.device, steps: int = 20) -> None:
+    """Train the KAN on downsampled MNIST with LBFGS + cross-entropy (CPU only) and print params, train time, and test accuracy."""
     print("\n=== KAN ===")
     # KAN training is expensive; use downsampled images and a subset.
     train_x, train_y, test_x, test_y = mnist_tensors(
