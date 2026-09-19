@@ -47,12 +47,3 @@ This prints parameter counts, training time, and test accuracy for the MLP and K
 MNIST data is expected in `src/data/`. The script does not download it automatically (`download=False`).
 
 Tune the KAN's training cost via the constants at the top of `src/main.py` (`KAN_INPUT_SIZE`, `KAN_TRAIN_SAMPLES`, `KAN_TEST_SAMPLES`) and the `steps` argument to `run_kan`.
-
-## Development
-
-```bash
-ruff check .          # lint
-ruff format .         # format
-mypy src/             # type check
-pytest                # run tests
-```
