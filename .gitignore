@@ -3,3 +3,7 @@ src/model/
 notebooks/figures
 notebooks/model
 model/
+
+.claude
+.ruff_cache
+.venv
