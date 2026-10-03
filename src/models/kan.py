@@ -8,4 +8,12 @@ def build_kan(
     grid: int = 5,
     k: int = 3,
 ) -> KAN:
-    return KAN(width=[input_size, hidden_size, output_size], grid=grid, k=k)
+    # The symbolic branch and activation caching exist for plotting and pruning,
+    # not training; leaving them on costs ~18x per step.
+    return KAN(
+        width=[input_size, hidden_size, output_size],
+        grid=grid,
+        k=k,
+        symbolic_enabled=False,
+        save_act=False,
+    )
