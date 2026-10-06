@@ -17,10 +17,14 @@ notebooks/
 
 ## Current Status
 
-Both models train end-to-end on MNIST via `python src/main.py`, which loads each model from `src/models/` and prints per-model parameter counts, training time, and test accuracy.
+Both models train end-to-end on MNIST via `uv run python src/main.py`, which loads each model from `src/models/` and prints per-model parameter counts, training time, and test accuracy. Both go through the same `train_and_report` path — full 28×28 MNIST, Adam + cross-entropy, batch size 64, 1 epoch — so the comparison is like-for-like.
 
-- **MLP**: 2-layer (128 hidden, ReLU), trained with Adam + cross-entropy on full 28×28 MNIST. ~97% test accuracy after 1 epoch.
-- **KAN**: `width=[64, 10, 10]` (grid=5, k=3) via [pykan](https://github.com/KindXiaoming/pykan), trained with LBFGS + cross-entropy on 8×8 downsampled MNIST (1000 train / 1000 test). ~81% test accuracy after 20 steps. Pinned to CPU because pykan's grid ops aren't reliably MPS-compatible.
+- **MLP**: 2-layer (128 hidden, ReLU). 101,770 params, ~96% test accuracy, ~4s to train.
+- **KAN**: `width=[784, 10, 10]` (grid=5, k=3) via [pykan](https://github.com/KindXiaoming/pykan). 136,648 params, ~92% test accuracy, ~10s to train. pykan's symbolic branch and activation caching are turned off (`symbolic_enabled=False`, `save_act=False`); they serve plotting and pruning, and leaving them on costs ~18× per training step. Pinned to CPU, which benchmarks slightly faster than MPS at this size.
+
+At matched input size the KAN is the larger model, takes about twice the wall time, and scores a few points lower.
+
+Note that pykan's default `grid_range=[-1, 1]` does not cover normalized MNIST (~[-0.42, 2.82]), so most inputs fall outside the spline grid; widening the range or calling `update_grid_from_samples` would likely improve the KAN's accuracy.
 
 ## Setup
 
@@ -39,11 +43,11 @@ PyTorch is installed platform-specifically:
 Train and evaluate both models on MNIST:
 
 ```bash
-python src/main.py
+uv run python src/main.py
 ```
 
 This prints parameter counts, training time, and test accuracy for the MLP and KAN in sequence. The MLP uses the best available device (CUDA → MPS → CPU); the KAN runs on CPU.
 
 MNIST data is expected in `src/data/`. The script does not download it automatically (`download=False`).
 
-Tune the KAN's training cost via the constants at the top of `src/main.py` (`KAN_INPUT_SIZE`, `KAN_TRAIN_SAMPLES`, `KAN_TEST_SAMPLES`) and the `steps` argument to `run_kan`.
+Tune the KAN's capacity via `build_kan`'s `hidden_size`, `grid`, and `k` arguments in `main`, and the training length of either model via the `epochs` argument to `train_and_report`.
