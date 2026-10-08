@@ -40,14 +40,21 @@ PyTorch is installed platform-specifically:
 
 ## Usage
 
-Train and evaluate both models on MNIST:
+Tune, train, and evaluate both models on MNIST:
 
 ```bash
-uv run python src/main.py
+uv run python src/main.py                       # 20 trials per model, 1 epoch per run
+uv run python src/main.py --trials 50 --epochs 3
 ```
 
-This prints parameter counts, training time, and test accuracy for the MLP and KAN in sequence. The MLP uses the best available device (CUDA → MPS → CPU); the KAN runs on CPU.
+For each model, an [Optuna](https://optuna.org) study (TPE sampler) searches hyperparameters by accuracy on a 5,000-example validation split held out from the training set. The best configuration is then retrained on the full training set and evaluated once on the test set, which is never seen during tuning. The script prints the best validation accuracy and params, then parameter count, training time, and test accuracy, for the MLP and KAN in sequence.
+
+| Model | Search space |
+|-------|--------------|
+| Both  | `lr` ∈ [1e-4, 1e-2] (log), `batch_size` ∈ {32, 64, 128} |
+| MLP   | `hidden_size` ∈ {64, 128, 256, 512} |
+| KAN   | `hidden_size` ∈ {5, 10, 20}, `grid` ∈ {3, 5, 8}, `k` ∈ {2, 3} | The MLP uses the best available device (CUDA → MPS → CPU); the KAN runs on CPU.
 
 MNIST data is expected in `src/data/`. The script does not download it automatically (`download=False`).
 
-Tune the KAN's capacity via `build_kan`'s `hidden_size`, `grid`, and `k` arguments in `main`, and the training length of either model via the `epochs` argument to `train_and_report`.
+Edit the search spaces in `build_mlp`, `build_tuned_kan`, and `suggest_training` in `src/main.py`.
