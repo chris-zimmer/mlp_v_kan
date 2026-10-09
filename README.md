@@ -30,7 +30,7 @@ Note that pykan's default `grid_range=[-1, 1]` does not cover normalized MNIST (
 
 ## Setup
 
-Requires Python 3.9+. Uses [uv](https://github.com/astral-sh/uv) for dependency management.
+Uses [uv](https://github.com/astral-sh/uv) for dependency management.
 
 ```bash
 uv sync
