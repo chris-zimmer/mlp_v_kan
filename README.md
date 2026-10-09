@@ -6,7 +6,7 @@ A comparison of **Multi-Layer Perceptrons (MLPs)** and **Kolmogorov-Arnold Netwo
 
 ```
 src/
-  main.py              # Entry point: trains MLP and KAN on MNIST, prints per-model results
+  main.py              # Entry point: tunes, trains, and evaluates MLP and KAN on MNIST
   data/                # MNIST data (gitignored)
   models/
     mlp.py             # MLP model definition
@@ -17,7 +17,9 @@ notebooks/
 
 ## Current Status
 
-Both models train end-to-end on MNIST via `uv run python src/main.py`, which loads each model from `src/models/` and prints per-model parameter counts, training time, and test accuracy. Both go through the same `train_and_report` path — full 28×28 MNIST, Adam + cross-entropy, batch size 64, 1 epoch — so the comparison is like-for-like.
+Both models are tuned, trained, and evaluated end-to-end on MNIST via `uv run python src/main.py` (see [Usage](#usage)). Both go through the same path — full 28×28 MNIST, Adam + cross-entropy, the same tuning budget and search over learning rate and batch size — so the comparison is like-for-like.
+
+The figures below are a pre-tuning baseline (batch size 64, Adam's default learning rate, 1 epoch) and have not yet been updated with tuned results:
 
 - **MLP**: 2-layer (128 hidden, ReLU). 101,770 params, ~96% test accuracy, ~4s to train.
 - **KAN**: `width=[784, 10, 10]` (grid=5, k=3) via [pykan](https://github.com/KindXiaoming/pykan). 136,648 params, ~92% test accuracy, ~10s to train. pykan's symbolic branch and activation caching are turned off (`symbolic_enabled=False`, `save_act=False`); they serve plotting and pruning, and leaving them on costs ~18× per training step. Pinned to CPU, which benchmarks slightly faster than MPS at this size.
@@ -28,7 +30,7 @@ Note that pykan's default `grid_range=[-1, 1]` does not cover normalized MNIST (
 
 ## Setup
 
-Requires Python 3.9+. Uses [uv](https://github.com/astral-sh/uv) for dependency management.
+Uses [uv](https://github.com/astral-sh/uv) for dependency management.
 
 ```bash
 uv sync
@@ -40,14 +42,32 @@ PyTorch is installed platform-specifically:
 
 ## Usage
 
-Train and evaluate both models on MNIST:
+Tune, train, and evaluate both models on MNIST:
 
 ```bash
-uv run python src/main.py
+uv run python src/main.py                       # 20 trials per model, 1 epoch per run
+uv run python src/main.py --trials 50 --epochs 3
 ```
 
-This prints parameter counts, training time, and test accuracy for the MLP and KAN in sequence. The MLP uses the best available device (CUDA → MPS → CPU); the KAN runs on CPU.
+For each model, an [Optuna](https://optuna.org) study (TPE sampler) searches hyperparameters by accuracy on a 5,000-example validation split held out from the training set. The best configuration is then retrained on the full training set and evaluated once on the test set, which is never seen during tuning. The script prints the best validation accuracy and params, then parameter count, training time, and test accuracy, for the MLP and KAN in sequence.
+
+| Model | Search space |
+|-------|--------------|
+| Both  | `lr` ∈ [1e-4, 1e-2] (log), `batch_size` ∈ {32, 64, 128} |
+| MLP   | `hidden_size` ∈ {64, 128, 256, 512} |
+| KAN   | `hidden_size` ∈ {5, 10, 20}, `grid` ∈ {3, 5, 8}, `k` ∈ {2, 3} |
+
+Edit the search spaces in `build_mlp`, `build_tuned_kan`, and `suggest_training` in `src/main.py`.
+
+The MLP uses the best available device (CUDA → MPS → CPU); the KAN runs on CPU. Expect tuning to take several minutes: each KAN run takes ~10s or more per epoch, and the default budget is 20 trials per model.
 
 MNIST data is expected in `src/data/`. The script does not download it automatically (`download=False`).
 
-Tune the KAN's capacity via `build_kan`'s `hidden_size`, `grid`, and `k` arguments in `main`, and the training length of either model via the `epochs` argument to `train_and_report`.
+### Why Optuna
+
+- **Adaptive search.** The TPE sampler uses earlier trials to choose the next settings, which wastes fewer runs than grid or random search. This matters for the KAN, where each run is slow.
+- **Search spaces in plain Python.** Each model's space is a small function, and the same function rebuilds the best model for the final run (via `optuna.trial.FixedTrial`).
+- **Works with a plain PyTorch loop.** No trainer framework or model wrappers are needed.
+- **Lightweight.** No server or cluster setup.
+
+Alternatives considered: scikit-learn's search classes (would need the PyTorch models wrapped, and offer only grid/random search), Ray Tune (built for distributed runs, heavier than needed here), and Hyperopt (similar algorithm, clunkier API, less actively maintained). With small budgets, TPE's edge over random search is modest, since its first 10 trials are random.
