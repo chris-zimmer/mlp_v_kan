@@ -1,6 +1,6 @@
 # MLP vs KAN
 
-A comparison of **Multi-Layer Perceptrons (MLPs)** and **Kolmogorov-Arnold Networks (KANs)** on standard benchmarks.
+A comparison of **Multi-Layer Perceptrons (MLPs)** and **Kolmogorov-Arnold Networks (KANs)** on accuracy.
 
 ## Project Structure
 
@@ -30,7 +30,7 @@ Note that pykan's default `grid_range=[-1, 1]` does not cover normalized MNIST (
 
 ## Setup
 
-Uses [uv](https://github.com/astral-sh/uv) for dependency management.
+Uses [uv](https://docs.astral.sh/uv/getting-started/installation/) for dependency management. Once that is installed on your machine, simply run the following command at the root of this repository:
 
 ```bash
 uv sync
