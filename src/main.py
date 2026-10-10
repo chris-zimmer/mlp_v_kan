@@ -8,7 +8,7 @@ import optuna
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from sklearn.metrics import ConfusionMatrixDisplay
+from sklearn.metrics import ConfusionMatrixDisplay, classification_report
 from torch.utils.data import DataLoader, Dataset, random_split
 from torchvision import datasets, transforms
 
@@ -176,7 +176,7 @@ def train_and_report(
     device: torch.device,
     epochs: int,
 ) -> None:
-    """Retrain with params on the full training set, print params, train time, and test accuracy, and save a confusion matrix."""
+    """Retrain with params on the full training set, print params, train time, test accuracy, and a classification report, and save a confusion matrix."""
     trial = optuna.trial.FixedTrial(params)
     model = build_model(trial)
     lr, batch_size = suggest_training(trial)
@@ -191,6 +191,8 @@ def train_and_report(
     print(f"{name} train time: {elapsed:.1f}s")
     print(f"{name} test accuracy: {acc:.4f}")
     print(f"{name} confusion matrix: {save_confusion_matrix(name, targets, preds)}")
+    print(f"{name} classification report:")
+    print(classification_report(targets.numpy(), preds.numpy(), digits=4))
 
 
 def parse_args() -> argparse.Namespace:

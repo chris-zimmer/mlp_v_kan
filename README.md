@@ -49,7 +49,7 @@ uv run python src/main.py                       # 20 trials per model, 1 epoch p
 uv run python src/main.py --trials 50 --epochs 3
 ```
 
-For each model, an [Optuna](https://optuna.org) study (TPE sampler) searches hyperparameters by accuracy on a 5,000-example validation split held out from the training set. The best configuration is then retrained on the full training set and evaluated once on the test set, which is never seen during tuning. The script prints the best validation accuracy and params, then parameter count, training time, and test accuracy, for the MLP and KAN in sequence. It also saves a test-set confusion matrix for each model to `results/<model>_confusion_matrix.png` (gitignored).
+For each model, an [Optuna](https://optuna.org) study (TPE sampler) searches hyperparameters by accuracy on a 5,000-example validation split held out from the training set. The best configuration is then retrained on the full training set and evaluated once on the test set, which is never seen during tuning. The script prints the best validation accuracy and params, then parameter count, training time, test accuracy, and a per-class classification report (precision, recall, F1), for the MLP and KAN in sequence. It also saves a test-set confusion matrix for each model to `results/<model>_confusion_matrix.png` (gitignored).
 
 | Model | Search space |
 |-------|--------------|
