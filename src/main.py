@@ -3,10 +3,12 @@ import time
 from collections.abc import Callable
 from pathlib import Path
 
+import matplotlib.pyplot as plt
 import optuna
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from sklearn.metrics import ConfusionMatrixDisplay
 from torch.utils.data import DataLoader, Dataset, random_split
 from torchvision import datasets, transforms
 
@@ -14,6 +16,7 @@ from models.kan import build_kan
 from models.mlp import MLP
 
 DATA_ROOT = Path(__file__).resolve().parent / "data"
+RESULTS_DIR = Path(__file__).resolve().parent.parent / "results"
 INPUT_SIZE = 28 * 28
 NUM_CLASSES = 10
 VAL_SIZE = 5_000
@@ -53,19 +56,38 @@ def split_train_val(train_set: Dataset) -> tuple[Dataset, Dataset]:
     return fit_set, val_set
 
 
-def evaluate(model: nn.Module, loader: DataLoader, device: torch.device) -> float:
-    """Compute classification accuracy of model over loader on the given device."""
+def predict(
+    model: nn.Module, loader: DataLoader, device: torch.device
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Return (targets, predicted classes) for every example in loader, on CPU."""
     model.eval()
-    correct = 0
-    total = 0
+    targets: list[torch.Tensor] = []
+    preds: list[torch.Tensor] = []
     with torch.no_grad():
         for data, target in loader:
             data = data.view(-1, INPUT_SIZE).to(device)
-            target = target.to(device)
-            pred = model(data).argmax(dim=1)
-            correct += (pred == target).sum().item()
-            total += target.size(0)
-    return correct / total
+            preds.append(model(data).argmax(dim=1).cpu())
+            targets.append(target)
+    return torch.cat(targets), torch.cat(preds)
+
+
+def evaluate(model: nn.Module, loader: DataLoader, device: torch.device) -> float:
+    """Compute classification accuracy of model over loader on the given device."""
+    targets, preds = predict(model, loader, device)
+    return (preds == targets).float().mean().item()
+
+
+def save_confusion_matrix(
+    name: str, targets: torch.Tensor, preds: torch.Tensor
+) -> Path:
+    """Plot the confusion matrix of preds against targets and save it as a PNG."""
+    RESULTS_DIR.mkdir(exist_ok=True)
+    path = RESULTS_DIR / f"{name.lower()}_confusion_matrix.png"
+    display = ConfusionMatrixDisplay.from_predictions(targets.numpy(), preds.numpy())
+    display.ax_.set_title(f"{name} test confusion matrix")
+    display.figure_.savefig(path, bbox_inches="tight")
+    plt.close(display.figure_)
+    return path
 
 
 def train(
@@ -154,7 +176,7 @@ def train_and_report(
     device: torch.device,
     epochs: int,
 ) -> None:
-    """Retrain with params on the full training set and print params, train time, and test accuracy."""
+    """Retrain with params on the full training set, print params, train time, and test accuracy, and save a confusion matrix."""
     trial = optuna.trial.FixedTrial(params)
     model = build_model(trial)
     lr, batch_size = suggest_training(trial)
@@ -162,11 +184,13 @@ def train_and_report(
     test_loader = DataLoader(test_set, batch_size=256, shuffle=False)
 
     elapsed = train(model, train_loader, device, lr, epochs)
-    acc = evaluate(model, test_loader, device)
+    targets, preds = predict(model, test_loader, device)
+    acc = (preds == targets).float().mean().item()
     n_params = sum(p.numel() for p in model.parameters())
     print(f"{name} params: {n_params}")
     print(f"{name} train time: {elapsed:.1f}s")
     print(f"{name} test accuracy: {acc:.4f}")
+    print(f"{name} confusion matrix: {save_confusion_matrix(name, targets, preds)}")
 
 
 def parse_args() -> argparse.Namespace:
