@@ -1,0 +1,7 @@
+# Paths are relative to the repository root.
+data_root: data
+results_dir: results
+input_size: 784
+num_classes: 10
+val_size: 5000
+seed: 0
