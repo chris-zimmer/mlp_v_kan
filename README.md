@@ -6,13 +6,23 @@ A comparison of **Multi-Layer Perceptrons (MLPs)** and **Kolmogorov-Arnold Netwo
 
 ```
 src/
-  main.py              # Entry point: tunes, trains, and evaluates MLP and KAN on MNIST
-  data/                # MNIST data (gitignored)
+  main.py                # Entry point: loads config, tunes, trains, and evaluates MLP and KAN on MNIST
+  config.yaml            # Paths, dataset sizes, and random seed
+  data/
+    mnist.py             # MNIST loading and train/validation split
   models/
-    mlp.py             # MLP model definition
-    kan.py             # KAN builder (pykan)
+    mlp.py               # MLP model definition
+    kan.py               # KAN builder (pykan)
+  training/
+    trainer.py           # Device selection, training loop, prediction, accuracy
+  tuning/
+    search_spaces.py     # Optuna search spaces and model builders
+    study.py             # Optuna hyperparameter search
+  evaluation/
+    report.py            # Final retrain, test metrics, and confusion matrix
+data/                    # MNIST data (gitignored)
 notebooks/
-  kan_ex.ipynb         # KAN experimentation notebook
+  kan_ex.ipynb           # KAN experimentation notebook
 ```
 
 ## Current Status
@@ -57,11 +67,11 @@ For each model, an [Optuna](https://optuna.org) study (TPE sampler) searches hyp
 | MLP   | `hidden_size` ∈ {64, 128, 256, 512} |
 | KAN   | `hidden_size` ∈ {5, 10, 20}, `grid` ∈ {3, 5, 8}, `k` ∈ {2, 3} |
 
-Edit the search spaces in `build_mlp`, `build_tuned_kan`, and `suggest_training` in `src/main.py`.
+Edit the search spaces in `build_mlp`, `build_tuned_kan`, and `suggest_training` in `src/tuning/search_spaces.py`.
 
 The MLP uses the best available device (CUDA → MPS → CPU); the KAN runs on CPU. Expect tuning to take several minutes: each KAN run takes ~10s or more per epoch, and the default budget is 20 trials per model.
 
-MNIST data is expected in `src/data/`. The script does not download it automatically (`download=False`).
+MNIST data is expected in `data/` at the repository root. The script does not download it automatically (`download=False`).
 
 ### Why Optuna
 

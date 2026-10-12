@@ -1,4 +1,4 @@
-src/data/
+/data/
 src/model/
 notebooks/figures
 notebooks/model
@@ -7,3 +7,5 @@ model/
 .claude
 .ruff_cache
 .venv
+__pycache__/
+*.mypy_cache
