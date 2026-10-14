@@ -1,3 +1,5 @@
+import uuid
+from datetime import date
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -10,12 +12,18 @@ from tuning.search_spaces import ModelFactory, suggest_training
 from training.trainer import predict, train
 
 
+def make_run_dir(results_dir: Path) -> Path:
+    """Create a uniquely named results/<date>_<short uuid> directory for this run."""
+    run_dir = results_dir / f"{date.today().isoformat()}_{uuid.uuid4().hex[:8]}"
+    run_dir.mkdir(parents=True)
+    return run_dir
+
+
 def save_confusion_matrix(
-    name: str, targets: torch.Tensor, preds: torch.Tensor, results_dir: Path
+    name: str, targets: torch.Tensor, preds: torch.Tensor, run_dir: Path
 ) -> Path:
     """Plot the confusion matrix of preds against targets and save it as a PNG."""
-    results_dir.mkdir(exist_ok=True)
-    path = results_dir / f"{name.lower()}_confusion_matrix.png"
+    path = run_dir / f"{name.lower()}_confusion_matrix.png"
     display = ConfusionMatrixDisplay.from_predictions(targets.numpy(), preds.numpy())
     display.ax_.set_title(f"{name} test confusion matrix")
     display.figure_.savefig(path, bbox_inches="tight")
@@ -31,9 +39,9 @@ def train_and_report(
     test_set: Dataset,
     device: torch.device,
     epochs: int,
-    results_dir: Path,
+    run_dir: Path | None,
 ) -> None:
-    """Retrain with params on the full training set, print params, train time, test accuracy, and a classification report, and save a confusion matrix."""
+    """Retrain with params on the full training set, print params, train time, test accuracy, and a classification report; if run_dir is set, save the report and a confusion matrix there."""
     trial = optuna.trial.FixedTrial(params)
     model = build_model(trial)
     lr, batch_size = suggest_training(trial)
@@ -47,8 +55,14 @@ def train_and_report(
     print(f"{name} params: {n_params}")
     print(f"{name} train time: {elapsed:.1f}s")
     print(f"{name} test accuracy: {acc:.4f}")
-    print(
-        f"{name} confusion matrix: {save_confusion_matrix(name, targets, preds, results_dir)}"
-    )
+    report = classification_report(targets.numpy(), preds.numpy(), digits=4)
     print(f"{name} classification report:")
-    print(classification_report(targets.numpy(), preds.numpy(), digits=4))
+    print(report)
+    if run_dir is None:
+        return
+    report_path = run_dir / f"{name.lower()}_classification_report.txt"
+    report_path.write_text(report)
+    print(f"{name} classification report saved: {report_path}")
+    print(
+        f"{name} confusion matrix saved: {save_confusion_matrix(name, targets, preds, run_dir)}"
+    )
