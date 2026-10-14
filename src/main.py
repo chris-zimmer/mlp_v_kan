@@ -7,7 +7,7 @@ import torch
 import yaml
 
 from data.mnist import mnist_datasets
-from evaluation.report import train_and_report
+from evaluation.report import make_run_dir, train_and_report
 from training.trainer import pick_device
 from tuning.search_spaces import ModelFactory, build_mlp, build_tuned_kan
 from tuning.study import tune
@@ -24,6 +24,7 @@ class Config:
     num_classes: int
     val_size: int
     seed: int
+    save_results: bool
 
 
 def load_config(path: Path) -> Config:
@@ -37,6 +38,7 @@ def load_config(path: Path) -> Config:
         num_classes=raw["num_classes"],
         val_size=raw["val_size"],
         seed=raw["seed"],
+        save_results=raw["save_results"],
     )
 
 
@@ -54,6 +56,7 @@ def main(config: Config) -> None:
     device = pick_device()
     print(f"Using device: {device}")
     train_set, test_set = mnist_datasets(config.data_root)
+    run_dir = make_run_dir(config.results_dir) if config.save_results else None
     # pykan is faster on CPU than MPS at this size, and its ops are more reliable there.
     mlp = partial(
         build_mlp, input_size=config.input_size, num_classes=config.num_classes
@@ -85,7 +88,7 @@ def main(config: Config) -> None:
             test_set,
             model_device,
             args.epochs,
-            config.results_dir,
+            run_dir,
         )
 
 

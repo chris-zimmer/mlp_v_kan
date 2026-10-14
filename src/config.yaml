@@ -5,3 +5,5 @@ input_size: 784
 num_classes: 10
 val_size: 5000
 seed: 0
+# Save confusion matrices and classification reports to results/<date>_<id>/.
+save_results: true
