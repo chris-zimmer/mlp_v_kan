@@ -1,6 +1,6 @@
 # MLP vs KAN
 
-A comparison of **Multi-Layer Perceptrons (MLPs)** and **Kolmogorov-Arnold Networks (KANs)** on accuracy.
+A comparison of **Multi-Layer Perceptrons (MLPs)** and **Kolmogorov-Arnold Networks (KANs)**.
 
 ## Project Structure
 

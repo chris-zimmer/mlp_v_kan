@@ -7,7 +7,12 @@ import torch
 import yaml
 
 from data.mnist import mnist_datasets
-from evaluation.report import make_run_dir, train_and_report
+from evaluation.report import (
+    ModelResult,
+    make_report_path,
+    train_and_report,
+    write_pdf_report,
+)
 from training.trainer import pick_device
 from tuning.search_spaces import ModelFactory, build_mlp, build_tuned_kan
 from tuning.study import tune
@@ -56,7 +61,6 @@ def main(config: Config) -> None:
     device = pick_device()
     print(f"Using device: {device}")
     train_set, test_set = mnist_datasets(config.data_root)
-    run_dir = make_run_dir(config.results_dir) if config.save_results else None
     # pykan is faster on CPU than MPS at this size, and its ops are more reliable there.
     mlp = partial(
         build_mlp, input_size=config.input_size, num_classes=config.num_classes
@@ -68,6 +72,7 @@ def main(config: Config) -> None:
         ("MLP", mlp, device),
         ("KAN", kan, torch.device("cpu")),
     ]
+    results: list[ModelResult] = []
     for name, build_model, model_device in runs:
         print(f"\n=== {name} ===")
         params = tune(
@@ -80,16 +85,21 @@ def main(config: Config) -> None:
             config.val_size,
             config.seed,
         )
-        train_and_report(
-            name,
-            build_model,
-            params,
-            train_set,
-            test_set,
-            model_device,
-            args.epochs,
-            run_dir,
+        results.append(
+            train_and_report(
+                name,
+                build_model,
+                params,
+                train_set,
+                test_set,
+                model_device,
+                args.epochs,
+            )
         )
+    if config.save_results:
+        report_path = make_report_path(config.results_dir)
+        write_pdf_report(results, report_path)
+        print(f"\nReport saved: {report_path}")
 
 
 if __name__ == "__main__":
