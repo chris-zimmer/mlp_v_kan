@@ -1,9 +1,9 @@
+# One of: mnist, fashion_mnist, covtype. Downloaded into data_root if missing.
+dataset: mnist
 # Paths are relative to the repository root.
 data_root: data
 results_dir: results
-input_size: 784
-num_classes: 10
 val_size: 5000
 seed: 0
-# Save a PDF report (summary, classification reports, confusion matrices) to results/<date>_<id>.pdf.
+# Save a PDF report (summary, classification reports, confusion matrices) to results/<date>_<dataset>_<id>.pdf.
 save_results: true

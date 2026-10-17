@@ -28,10 +28,12 @@ class ModelResult:
     preds: torch.Tensor
 
 
-def make_report_path(results_dir: Path) -> Path:
-    """Return a uniquely named results/<date>_<short uuid>.pdf path for this run."""
+def make_report_path(results_dir: Path, dataset: str) -> Path:
+    """Return a uniquely named results/<date>_<dataset>_<short uuid>.pdf path for this run."""
     results_dir.mkdir(parents=True, exist_ok=True)
-    return results_dir / f"{date.today().isoformat()}_{uuid.uuid4().hex[:8]}.pdf"
+    return (
+        results_dir / f"{date.today().isoformat()}_{dataset}_{uuid.uuid4().hex[:8]}.pdf"
+    )
 
 
 def train_and_report(
@@ -66,9 +68,9 @@ def _format_value(value: int | float | str) -> str:
     return f"{value:.4g}" if isinstance(value, float) else str(value)
 
 
-def _summary_page(results: list[ModelResult]) -> Figure:
+def _summary_page(results: list[ModelResult], dataset_title: str) -> Figure:
     fig = plt.figure(figsize=PAGE_SIZE)
-    fig.suptitle("MLP vs KAN on MNIST", fontsize=16, y=0.95)
+    fig.suptitle(f"MLP vs KAN on {dataset_title}", fontsize=16, y=0.95)
     ax = fig.add_axes((0.1, 0.55, 0.8, 0.3))
     ax.axis("off")
     ax.table(
@@ -83,9 +85,9 @@ def _summary_page(results: list[ModelResult]) -> Figure:
     return fig
 
 
-def _model_page(result: ModelResult) -> Figure:
+def _model_page(result: ModelResult, dataset_title: str) -> Figure:
     fig = plt.figure(figsize=PAGE_SIZE)
-    fig.suptitle(f"{result.name}", fontsize=16, y=0.97)
+    fig.suptitle(f"{result.name} on {dataset_title}", fontsize=16, y=0.97)
 
     hyperparams = ", ".join(
         f"{key}={_format_value(value)}" for key, value in result.hyperparams.items()
@@ -132,9 +134,14 @@ def _model_page(result: ModelResult) -> Figure:
     return fig
 
 
-def write_pdf_report(results: list[ModelResult], path: Path) -> None:
+def write_pdf_report(
+    results: list[ModelResult], dataset_title: str, path: Path
+) -> None:
     """Write a PDF with a model comparison page followed by one page per model."""
     with PdfPages(path) as pdf:
-        for fig in [_summary_page(results), *map(_model_page, results)]:
+        for fig in [
+            _summary_page(results, dataset_title),
+            *(_model_page(result, dataset_title) for result in results),
+        ]:
             pdf.savefig(fig)
             plt.close(fig)

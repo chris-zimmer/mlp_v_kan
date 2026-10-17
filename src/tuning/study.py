@@ -2,7 +2,7 @@ import optuna
 import torch
 from torch.utils.data import DataLoader, Dataset
 
-from data.mnist import split_train_val
+from data.loaders import split_train_val
 from tuning.search_spaces import ModelFactory, suggest_training
 from training.trainer import evaluate, train
 

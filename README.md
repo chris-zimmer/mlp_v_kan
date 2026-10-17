@@ -6,10 +6,10 @@ A comparison of **Multi-Layer Perceptrons (MLPs)** and **Kolmogorov-Arnold Netwo
 
 ```
 src/
-  main.py                # Entry point: loads config, tunes, trains, and evaluates MLP and KAN on MNIST
-  config.yaml            # Paths, dataset sizes, and random seed
+  main.py                # Entry point: loads config, tunes, trains, and evaluates MLP and KAN on the configured dataset
+  config.yaml            # Dataset choice, paths, validation size, and random seed
   data/
-    mnist.py             # MNIST loading and train/validation split
+    loaders.py           # MNIST, Fashion-MNIST, and Covertype loading; train/validation split
   models/
     mlp.py               # MLP model definition
     kan.py               # KAN builder (pykan)
@@ -19,8 +19,8 @@ src/
     search_spaces.py     # Optuna search spaces and model builders
     study.py             # Optuna hyperparameter search
   evaluation/
-    report.py            # Final retrain, test metrics, and confusion matrix
-data/                    # MNIST data (gitignored)
+    report.py            # Final retrain, test metrics, and PDF report
+data/                    # Downloaded datasets (gitignored)
 notebooks/
   kan_ex.ipynb           # KAN experimentation notebook
 ```
@@ -52,14 +52,14 @@ PyTorch is installed platform-specifically:
 
 ## Usage
 
-Tune, train, and evaluate both models on MNIST:
+Tune, train, and evaluate both models on the dataset set by `dataset` in `src/config.yaml`:
 
 ```bash
 uv run python src/main.py                       # 20 trials per model, 1 epoch per run
 uv run python src/main.py --trials 50 --epochs 3
 ```
 
-For each model, an [Optuna](https://optuna.org) study (TPE sampler) searches hyperparameters by accuracy on a 5,000-example validation split held out from the training set. The best configuration is then retrained on the full training set and evaluated once on the test set, which is never seen during tuning. The script prints the best validation accuracy and params, then parameter count, training time, test accuracy, and a per-class classification report (precision, recall, F1), for the MLP and KAN in sequence. If `save_results` is `true` in `src/config.yaml`, each run also creates `results/<date>_<short uuid>/` (e.g. `results/2026-10-13_3f9a1c2e/`) and saves each model's test-set confusion matrix (`<model>_confusion_matrix.png`) and classification report (`<model>_classification_report.txt`) there (gitignored).
+For each model, an [Optuna](https://optuna.org) study (TPE sampler) searches hyperparameters by accuracy on a 5,000-example validation split held out from the training set. The best configuration is then retrained on the full training set and evaluated once on the test set, which is never seen during tuning. The script prints the best validation accuracy and params, then parameter count, training time, test accuracy, and a per-class classification report (precision, recall, F1), for the MLP and KAN in sequence. If `save_results` is `true` in `src/config.yaml`, each run also saves a PDF report to `results/<date>_<dataset>_<short uuid>.pdf` (e.g. `results/2026-10-13_mnist_3f9a1c2e.pdf`, gitignored): a summary page comparing test accuracy, parameter count, and training time, then one page per model with its hyperparameters, classification report, and test-set confusion matrix.
 
 | Model | Search space |
 |-------|--------------|
@@ -71,7 +71,13 @@ Edit the search spaces in `build_mlp`, `build_tuned_kan`, and `suggest_training`
 
 The MLP uses the best available device (CUDA → MPS → CPU); the KAN runs on CPU. Expect tuning to take several minutes: each KAN run takes ~10s or more per epoch, and the default budget is 20 trials per model.
 
-MNIST data is expected in `data/` at the repository root. The script does not download it automatically (`download=False`).
+| `dataset` | Data | Inputs | Classes | Train / test |
+|-----------|------|--------|---------|--------------|
+| `mnist` | 28×28 handwritten digits | 784 | 10 | 60,000 / 10,000 |
+| `fashion_mnist` | 28×28 clothing images | 784 | 10 | 60,000 / 10,000 |
+| `covtype` | [Covertype](https://archive.ics.uci.edu/dataset/31/covertype) forest cover (tabular) | 54 | 7 | 464,809 / 116,203 |
+
+Datasets are downloaded into `data/` at the repository root on first use. Covertype has no official test split, so 20% is held out (stratified, seeded by `seed`), and its 10 continuous features are standardized using training-set statistics; the 44 one-hot features are left as is.
 
 ### Why Optuna
 

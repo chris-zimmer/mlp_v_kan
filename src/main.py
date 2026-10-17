@@ -6,7 +6,7 @@ from pathlib import Path
 import torch
 import yaml
 
-from data.mnist import mnist_datasets
+from data.loaders import load_dataset
 from evaluation.report import (
     ModelResult,
     make_report_path,
@@ -23,10 +23,9 @@ CONFIG_PATH = Path(__file__).resolve().parent / "config.yaml"
 
 @dataclass(frozen=True)
 class Config:
+    dataset: str
     data_root: Path
     results_dir: Path
-    input_size: int
-    num_classes: int
     val_size: int
     seed: int
     save_results: bool
@@ -37,10 +36,9 @@ def load_config(path: Path) -> Config:
     with path.open() as f:
         raw = yaml.safe_load(f)
     return Config(
+        dataset=raw["dataset"],
         data_root=PROJECT_ROOT / raw["data_root"],
         results_dir=PROJECT_ROOT / raw["results_dir"],
-        input_size=raw["input_size"],
-        num_classes=raw["num_classes"],
         val_size=raw["val_size"],
         seed=raw["seed"],
         save_results=raw["save_results"],
@@ -60,13 +58,12 @@ def main(config: Config) -> None:
     args = parse_args()
     device = pick_device()
     print(f"Using device: {device}")
-    train_set, test_set = mnist_datasets(config.data_root)
+    data = load_dataset(config.dataset, config.data_root, config.seed)
+    print(f"Dataset: {data.title}")
     # pykan is faster on CPU than MPS at this size, and its ops are more reliable there.
-    mlp = partial(
-        build_mlp, input_size=config.input_size, num_classes=config.num_classes
-    )
+    mlp = partial(build_mlp, input_size=data.input_size, num_classes=data.num_classes)
     kan = partial(
-        build_tuned_kan, input_size=config.input_size, num_classes=config.num_classes
+        build_tuned_kan, input_size=data.input_size, num_classes=data.num_classes
     )
     runs: list[tuple[str, ModelFactory, torch.device]] = [
         ("MLP", mlp, device),
@@ -78,7 +75,7 @@ def main(config: Config) -> None:
         params = tune(
             name,
             build_model,
-            train_set,
+            data.train,
             model_device,
             args.trials,
             args.epochs,
@@ -90,15 +87,15 @@ def main(config: Config) -> None:
                 name,
                 build_model,
                 params,
-                train_set,
-                test_set,
+                data.train,
+                data.test,
                 model_device,
                 args.epochs,
             )
         )
     if config.save_results:
-        report_path = make_report_path(config.results_dir)
-        write_pdf_report(results, report_path)
+        report_path = make_report_path(config.results_dir, config.dataset)
+        write_pdf_report(results, data.title, report_path)
         print(f"\nReport saved: {report_path}")
 
 
