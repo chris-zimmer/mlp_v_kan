@@ -27,16 +27,18 @@ notebooks/
 
 ## Current Status
 
-Both models are tuned, trained, and evaluated end-to-end on MNIST via `uv run python src/main.py` (see [Usage](#usage)). Both go through the same path — full 28×28 MNIST, Adam + cross-entropy, the same tuning budget and search over learning rate and batch size — so the comparison is like-for-like.
+Both models are tuned, trained, and evaluated end-to-end via `uv run python src/main.py` on one of three datasets: MNIST, Fashion-MNIST (both 28×28 images, 784 inputs), or Covertype (tabular, 54 features, 7 classes); see [Usage](#usage). Both models go through the same path — the same data, Adam + cross-entropy, the same tuning budget and search over learning rate and batch size — so the comparison is like-for-like.
 
-The figures below are a pre-tuning baseline (batch size 64, Adam's default learning rate, 1 epoch) and have not yet been updated with tuned results:
+Fashion-MNIST and Covertype are newly added and have no tuned results yet. Covertype is included because KANs are claimed to do best on low-dimensional, structured features rather than raw pixels.
+
+The MNIST figures below are a pre-tuning baseline (batch size 64, Adam's default learning rate, 1 epoch) and have not yet been updated with tuned results:
 
 - **MLP**: 2-layer (128 hidden, ReLU). 101,770 params, ~96% test accuracy, ~4s to train.
 - **KAN**: `width=[784, 10, 10]` (grid=5, k=3) via [pykan](https://github.com/KindXiaoming/pykan). 136,648 params, ~92% test accuracy, ~10s to train. pykan's symbolic branch and activation caching are turned off (`symbolic_enabled=False`, `save_act=False`); they serve plotting and pruning, and leaving them on costs ~18× per training step. Pinned to CPU, which benchmarks slightly faster than MPS at this size.
 
 At matched input size the KAN is the larger model, takes about twice the wall time, and scores a few points lower.
 
-Note that pykan's default `grid_range=[-1, 1]` does not cover normalized MNIST (~[-0.42, 2.82]), so most inputs fall outside the spline grid; widening the range or calling `update_grid_from_samples` would likely improve the KAN's accuracy.
+Note that pykan's default `grid_range=[-1, 1]` does not cover the normalized image inputs (MNIST ~[-0.42, 2.82], Fashion-MNIST ~[-0.81, 2.02]), so many inputs fall outside the spline grid. Covertype's standardized continuous features also exceed it in the tails. Widening the range or calling `update_grid_from_samples` would likely improve the KAN's accuracy.
 
 ## Setup
 
